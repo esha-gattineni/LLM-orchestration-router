@@ -14,7 +14,7 @@ Analyzes incoming requests
 Classifies complexity
 Routes to the most suitable model (e.g., GPT-4, Claude)
 
-# Architecture (High Level)
+# Architecture
 User Request
 → API Layer (FastAPI)
 → Routing Logic (complexity + cost + latency rules)
