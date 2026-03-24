@@ -1,0 +1,25 @@
+# Core
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+pydantic-settings==2.6.1
+
+# LangChain
+langchain==0.3.10
+langchain-openai==0.2.12
+langchain-anthropic==0.3.3
+langchain-core==0.3.25
+
+# Azure
+azure-functions==1.21.3
+opencensus-ext-azure==1.1.13
+opencensus==0.11.4
+
+# Dev / testing
+pytest==8.3.4
+pytest-asyncio==0.24.0
+httpx==0.28.1
+pytest-mock==3.14.0
+
+# Observability
+python-json-logger==2.0.7
