@@ -1,33 +1,80 @@
-import time
-import uuid
+"""
+Telemetry Service — Azure Application Insights
+-----------------------------------------------
+Wraps opencensus-ext-azure to emit custom events, metrics, and exceptions.
+Falls back gracefully to a no-op logger when the connection string is absent
+(e.g., local development).
+"""
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
+import logging
 
-from app.services.telemetry import get_telemetry
+from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
-class TelemetryMiddleware(BaseHTTPMiddleware):
-    """Emits per-request duration and status metrics to Application Insights."""
+class _NoOpTelemetry:
+    """Fallback when Application Insights is not configured."""
 
-    async def dispatch(self, request: Request, call_next):
-        request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
-        t0 = time.perf_counter()
+    def track_event(self, name: str, properties: dict = None):
+        logger.debug("[telemetry:event] %s %s", name, properties or {})
 
-        response = await call_next(request)
+    def track_metric(self, name: str, value: float, properties: dict = None):
+        logger.debug("[telemetry:metric] %s=%.4f %s", name, value, properties or {})
 
-        duration_ms = (time.perf_counter() - t0) * 1000
-        telemetry = get_telemetry()
-        telemetry.track_metric(
-            "http.request_duration_ms",
-            duration_ms,
-            {
-                "path": request.url.path,
-                "method": request.method,
-                "status_code": str(response.status_code),
-                "request_id": request_id,
-            },
+    def track_exception(self, exc: Exception):
+        logger.exception("[telemetry:exception]", exc_info=exc)
+
+    def flush(self):
+        pass
+
+
+class AppInsightsTelemetry:
+    """Real Application Insights telemetry via opencensus-ext-azure."""
+
+    def __init__(self, connection_string: str):
+        from opencensus.ext.azure.log_exporter import AzureLogHandler
+
+        self._logger = logging.getLogger("app.insights")
+        self._logger.setLevel(logging.INFO)
+        self._logger.addHandler(
+            AzureLogHandler(connection_string=connection_string)
         )
-        response.headers["X-Request-ID"] = request_id
-        response.headers["X-Duration-Ms"] = str(round(duration_ms, 2))
-        return response
+
+    def track_event(self, name: str, properties: dict = None):
+        self._logger.info(
+            name,
+            extra={"custom_dimensions": properties or {}},
+        )
+
+    def track_metric(self, name: str, value: float, properties: dict = None):
+        self._logger.info(
+            "metric",
+            extra={"custom_dimensions": {"metric_name": name, "value": value, **(properties or {})}},
+        )
+
+    def track_exception(self, exc: Exception):
+        self._logger.exception("Unhandled exception", exc_info=exc)
+
+    def flush(self):
+        for handler in self._logger.handlers:
+            handler.flush()
+
+
+_telemetry = None
+
+
+def get_telemetry() -> _NoOpTelemetry | AppInsightsTelemetry:
+    global _telemetry
+    if _telemetry is None:
+        cs = settings.APPLICATIONINSIGHTS_CONNECTION_STRING
+        if cs:
+            try:
+                _telemetry = AppInsightsTelemetry(cs)
+                logger.info("Application Insights telemetry initialised.")
+            except Exception as e:
+                logger.warning("Failed to init App Insights: %s — using no-op.", e)
+                _telemetry = _NoOpTelemetry()
+        else:
+            _telemetry = _NoOpTelemetry()
+    return _telemetry

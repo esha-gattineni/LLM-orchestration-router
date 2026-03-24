@@ -3,7 +3,6 @@ Tests for the routing engine — complexity scoring and model selection.
 Run with: pytest tests/ -v
 """
 
-import pytest
 from app.services.routing_engine import (
     score_complexity,
     estimate_cost,

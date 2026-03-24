@@ -1,10 +1,9 @@
 import uuid
 import time
 
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, HTTPException
 
-from app.models.schemas import ChatRequest, ChatResponse, ModelChoice
+from app.models.schemas import ChatRequest, ChatResponse
 from app.services.routing_engine import get_routing_engine
 from app.services.llm_client import get_llm_client
 from app.services.telemetry import get_telemetry

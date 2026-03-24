@@ -11,8 +11,6 @@ simpler queries to Claude while reserving GPT-4 for complex reasoning.
 """
 
 import re
-import time
-import math
 from dataclasses import dataclass
 
 from app.config import settings
