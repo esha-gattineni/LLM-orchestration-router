@@ -29,6 +29,7 @@ class TelemetryMiddleware:
                 MutableHeaders(scope=message)["X-Request-ID"] = request_id
             await send(message)
 
+    #Try method to raise exceptions
         try:
             await self.app(scope, receive, send_with_id)
         except Exception as exc:
